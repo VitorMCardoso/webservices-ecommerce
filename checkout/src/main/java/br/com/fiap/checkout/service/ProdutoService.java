@@ -1,7 +1,9 @@
 package br.com.fiap.checkout.service;
 
 import br.com.fiap.checkout.model.Produto;
+import com.google.gson.Gson;
 import com.netflix.hystrix.contrib.javanica.annotation.HystrixCommand;
+import jdk.nashorn.internal.ir.debug.JSONWriter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.CacheEvict;
@@ -41,7 +43,6 @@ public class ProdutoService {
 
     @HystrixCommand(fallbackMethod = "addMsg")
     @Caching(
-            //put = {@CachePut(value = "produtoAddCache", key = "#produtos.get(1).id")},
             evict = {@CacheEvict(value = "allProdutoCache", allEntries = true)}
     )
     public void addProduto(List<Produto> produtos) {
@@ -51,7 +52,8 @@ public class ProdutoService {
     }
 
     public void addMsg(List<Produto> produtos) {
-        jmsTemplate.convertAndSend(queueName, Objects.requireNonNull(Arrays.toString(produtos.toArray())));
+        String json = new Gson().toJson(produtos);
+        jmsTemplate.convertAndSend(queueName, Objects.requireNonNull(json));
     }
 
     public List<Produto> defaultList() {

@@ -2,24 +2,26 @@ package br.com.fiap.catalogo.service;
 
 import br.com.fiap.catalogo.model.Produto;
 import br.com.fiap.catalogo.repository.ProdutoRepository;
-import br.com.fiap.catalogo.util.ObjectMapperFactory;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.jms.annotation.JmsListener;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import javax.jms.ConnectionFactory;
 import java.io.IOException;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 @Service
 public class ProdutoService {
 
-    private ObjectMapper objectMapper = ObjectMapperFactory.createObjectMapper();
+    @Autowired
+    private ConnectionFactory connectionFactory;
+
 
     @Autowired
     ProdutoRepository produtoRepository;
@@ -36,10 +38,6 @@ public class ProdutoService {
         return produtoRepository.findProdutoByPrecoIsLessThanEqual(preco);
     }
 
-   /* public Flux<Produto> saveAll(Flux<Produto> produtos) {
-        return produtoRepository.saveAll(produtos);
-    }*/
-
     public void initializeProdutos(List<Produto> produtoList) {
         Flux<Produto> savedProdutos = produtoRepository.saveAll(produtoList);
         savedProdutos.subscribe();
@@ -47,10 +45,10 @@ public class ProdutoService {
 
     @JmsListener(destination = "retencao")
     public void onReceiverQueue(String str) throws IOException {
-        List<Produto> produtoList = objectMapper.readValue(str, List.class);
-
-
-        System.out.println(str);
+        Type listType = new TypeToken<ArrayList<Produto>>() {
+        }.getType();
+        List<Produto> produtoList = new Gson().fromJson(str, listType);
+        initializeProdutos(produtoList);
     }
 
 }
